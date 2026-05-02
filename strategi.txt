@@ -1,3 +1,4 @@
 buat preprocessing kedepan
 1. buang kolom id
 2. lakukan imbalance kelas
+3. preproscessing secara pada umunya
