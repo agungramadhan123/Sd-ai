@@ -1,11 +1,11 @@
+#Jika terjadi error pada terminal file tidak di temukan, korescek lagi pada setiap file path yang perlu disesuaikan
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 import joblib
 
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import SGDClassifier, LogisticRegression
 from sklearn.metrics import (
     f1_score, classification_report,
     confusion_matrix, ConfusionMatrixDisplay
@@ -28,7 +28,7 @@ class DataPipeline:
         return X, y, df
 
 
-def buat_tfidf_vectorizer(ngram_range=(1, 2), min_df=3, max_df=0.9,
+def buat_tfidf_vectorizer(ngram_range=(1, 2), min_df=3, max_df=0.85,
                           max_features=10000, sublinear_tf=True):
     return TfidfVectorizer(
         ngram_range=ngram_range,
@@ -44,17 +44,10 @@ def buat_pipeline(model_type='logistic_regression', ngram_range=(1, 2),
     vectorizer = buat_tfidf_vectorizer(ngram_range, min_df, max_df, max_features)
     smote = SMOTE(random_state=42)
     if model_type == 'logistic_regression':
-        model = SGDClassifier(
-            loss='log_loss',          
-            penalty='l2',
-            alpha=1e-4,
-            max_iter=1000,
-            early_stopping=True,        
-            validation_fraction=0.1,   
-            n_iter_no_change=5,         
-            tol=1e-3,
-            random_state=42,
-            verbose=1,               
+        model = LogisticRegression(
+            max_iter=200,
+            n_jobs=-1,
+            class_weight='balanced'
         )
     elif model_type == 'linear_svm':
         model = SGDClassifier(
@@ -62,7 +55,7 @@ def buat_pipeline(model_type='logistic_regression', ngram_range=(1, 2),
             penalty='l2',
             alpha=1e-4,
             max_iter=1000,
-            early_stopping=True,
+            early_stopping=False,
             validation_fraction=0.1,
             n_iter_no_change=5,
             tol=1e-3,
@@ -91,9 +84,7 @@ def evaluasi_model(pipeline, X_test, y_test, label_names=None):
     macro_f1 = f1_score(y_test, y_pred, average='macro')
     report = classification_report(y_test, y_pred, target_names=label_names)
     cm = confusion_matrix(y_test, y_pred, labels=label_names)
-    print("=" * 70)
     print("HASIL EVALUASI MODEL")
-    print("=" * 70)
     print(f"\n  Macro-F1 Score: {macro_f1:.4f}")
     print(f"\nClassification Report:\n{report}")
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -161,16 +152,12 @@ def muat_model(path):
 
 
 if __name__ == '__main__':
-    # --- Konfigurasi ---
-    BASE_PATH = r"D:\Semester 6\Tubes sg ai\Data"
-    MODEL_TYPE = 'logistic_regression'  # 'logistic_regression' atau 'linear_svm'
+    # ganti link data sesuai pada alamat laptop anda
+    BASE_PATH = r"E:\smstr 6\Sg-ai\Data"
+    MODEL_TYPE = 'linear_svm'  # 'logistic_regression' atau 'linear_svm'
     MODEL_SAVE_PATH = os.path.join(BASE_PATH, '..', 'Ml', 'model_pipeline.pkl')
 
-    # --- 1. Muat & Proses Data ---
-    print("=" * 70)
     print("STEP 1: Memuat dan memproses data...")
-    print("=" * 70)
-
     data_pipeline = DataPipeline(BASE_PATH)
     X_train, y_train, df_train = data_pipeline.muat_dan_proses('train.json')
     X_test, y_test, df_test = data_pipeline.muat_dan_proses('test.json')
@@ -181,37 +168,19 @@ if __name__ == '__main__':
     print(f"  Kelas: {label_names}")
     print(f"  Distribusi train:\n{y_train.value_counts().to_string()}")
 
-    # --- 2. Buat & Latih Pipeline ---
-    print("\n" + "=" * 70)
     print(f"STEP 2: Membuat dan melatih pipeline ({MODEL_TYPE})...")
     print("  TF-IDF (unigram+bigram) -> SMOTE -> SGDClassifier (early stopping)")
-    print("=" * 70)
-
+    
     pipeline = buat_pipeline(model_type=MODEL_TYPE)
     pipeline = latih_model(pipeline, X_train, y_train)
     print("\n  Model berhasil dilatih!")
 
-    # --- 3. Evaluasi ---
-    print("\n" + "=" * 70)
     print("STEP 3: Evaluasi model pada test set...")
-    print("=" * 70)
-
     hasil = evaluasi_model(pipeline, X_test, y_test, label_names=label_names)
 
-    # --- 4. Interpretasi ---
-    print("\n" + "=" * 70)
     print("STEP 4: Interpretasi model -- Top kata prediktif per kelas...")
-    print("=" * 70)
-
     visualisasi_top_kata_per_kelas(pipeline, top_n=15)
-
-    # --- 5. Simpan Model ---
-    print("\n" + "=" * 70)
     print("STEP 5: Menyimpan model...")
-    print("=" * 70)
 
     simpan_model(pipeline, MODEL_SAVE_PATH)
-
-    print("\n" + "=" * 70)
     print("Pipeline selesai!")
-    print("=" * 70)

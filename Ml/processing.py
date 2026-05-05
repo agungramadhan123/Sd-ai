@@ -29,7 +29,6 @@ class Preprocessing(ProsesData):
     def hapus_tanda_baca(self,teks:str):
         return teks.translate(str.maketrans('', '', string.punctuation))
 
-
     def hapus_emoji(self,teks:str):
         return re.sub(r'[^\x00-\x7F]+', '', teks)
     

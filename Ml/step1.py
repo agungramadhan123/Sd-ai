@@ -1,3 +1,4 @@
+#Jika terjadi error pada terminal file tidak di temukan, korescek lagi pada setiap file path yang perlu disesuaikan
 import pandas as pd
 import json
 import re
@@ -7,7 +8,7 @@ class ProsesData:
         self.base_path = base_path
         
     def _baca_file(self, file_name: str) -> str:
-        full_path = f"{self.base_path}{file_name}"
+        full_path = f"{self.base_path}\\{file_name}"
         with open(full_path, 'r', encoding='utf-8') as f:
             return f.read()
             
