@@ -8,7 +8,8 @@ class ProsesData:
         self.base_path = base_path
         
     def _baca_file(self, file_name: str) -> str:
-        full_path = f"{self.base_path}\\{file_name}"
+        import os
+        full_path = os.path.join(self.base_path, file_name)
         with open(full_path, 'r', encoding='utf-8') as f:
             return f.read()
             

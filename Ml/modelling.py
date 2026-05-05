@@ -154,8 +154,8 @@ def muat_model(path):
 if __name__ == '__main__':
     # ganti link data sesuai pada alamat laptop anda
     BASE_PATH = r"E:\smstr 6\Sg-ai\Data"
-    MODEL_TYPE = 'linear_svm'  # 'logistic_regression' atau 'linear_svm'
-    MODEL_SAVE_PATH = os.path.join(BASE_PATH, '..', 'Ml', 'model_pipeline.pkl')
+    MODEL_TYPE = 'logistic_regression'  # 'logistic_regression' atau 'linear_svm'
+    MODEL_SAVE_PATH = os.path.join(BASE_PATH, '..', 'Ml', 'model_pipeline.pkl(logistic)')
 
     print("STEP 1: Memuat dan memproses data...")
     data_pipeline = DataPipeline(BASE_PATH)
@@ -170,7 +170,7 @@ if __name__ == '__main__':
 
     print(f"STEP 2: Membuat dan melatih pipeline ({MODEL_TYPE})...")
     print("  TF-IDF (unigram+bigram) -> SMOTE -> SGDClassifier (early stopping)")
-    
+
     pipeline = buat_pipeline(model_type=MODEL_TYPE)
     pipeline = latih_model(pipeline, X_train, y_train)
     print("\n  Model berhasil dilatih!")
