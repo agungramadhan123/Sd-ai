@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  sg-ai-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sg-ai-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist the SQLite database outside the container
+      - sg-ai-data:/app/AI
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  sg-ai-data:
+    driver: local

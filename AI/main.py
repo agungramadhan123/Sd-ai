@@ -143,50 +143,18 @@ class HistoryItem(BaseModel):
 
 
 class StatsResponse(BaseModel):
-    """Aggregate prediction statistics returned by ``/stats``.
-
-    Attributes:
-        total: Total number of predictions.
-        label_distribution: Mapping of label to count.
-    """
-
     total: int
     label_distribution: Dict[str, int]
 
 
 class ErrorResponse(BaseModel):
-    """Standardised error response body.
-
-    Attributes:
-        error: Short error title.
-        detail: Human-readable explanation.
-    """
-
     error: str
     detail: str
 
-
-# ---------------------------------------------------------------------------
 # Application lifespan — load model once at startup
-# ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage application startup and shutdown events.
-
-    On startup:
-        - Initialise the database (create tables if needed).
-        - Load the ML model pipeline from the configured path.
-        - Instantiate the text preprocessor.
-
-    Args:
-        app: The FastAPI application instance.
-
-    Yields:
-        Control to the running application.
-    """
     global _model_pipeline, _preprocessor
-
-    # --- Startup ---------------------------------------------------------
     # 1. Initialise database
     try:
         init_db()
@@ -222,15 +190,11 @@ async def lifespan(app: FastAPI):
         logger.exception("Failed to initialise preprocessor")
         raise
 
-    yield  # ← application runs here
-
-    # --- Shutdown --------------------------------------------------------
+    yield 
     logger.info("Application shutting down")
 
 
-# ---------------------------------------------------------------------------
 # FastAPI application
-# ---------------------------------------------------------------------------
 app = FastAPI(
     title="Sg-ai -- Tweet Sentiment Predictor",
     description=(
@@ -248,10 +212,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ---------------------------------------------------------------------------
 # Endpoints — Health
-# ---------------------------------------------------------------------------
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check() -> HealthResponse:
     """Return the health status of the API.
