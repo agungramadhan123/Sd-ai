@@ -51,7 +51,7 @@ def buat_pipeline(model_type='logistic_regression', ngram_range=(1, 2),
         )
     elif model_type == 'linear_svm':
         model = SGDClassifier(
-            loss='hinge',               
+            loss='hinge',
             penalty='l2',
             alpha=1e-4,
             max_iter=1000,
@@ -153,7 +153,7 @@ def muat_model(path):
 
 if __name__ == '__main__':
     # ganti link data sesuai pada alamat laptop anda
-    BASE_PATH = r"E:\smstr 6\Sg-ai\Data"
+    BASE_PATH = r"D:\Semester 6\Tubes sg ai\Data"
     MODEL_TYPE = 'logistic_regression'  # 'logistic_regression' atau 'linear_svm'
     MODEL_SAVE_PATH = os.path.join(BASE_PATH, '..', 'Ml', 'model_pipeline.pkl(logistic)')
 

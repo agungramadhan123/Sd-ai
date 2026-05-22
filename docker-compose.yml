@@ -1,24 +1,37 @@
-version: "3.9"
-
 services:
-  sg-ai-api:
+  backend:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: sg-ai-api
+      dockerfile: Dockerfile.backend
+    container_name: sg-ai-backend
     ports:
       - "8000:8000"
     volumes:
-      # Persist the SQLite database outside the container
-      - sg-ai-data:/app/AI
+      - sg-ai-data:/app/Ai
+      - ./Ai/predictions.db:/app/Ai/predictions.db
     environment:
       - PYTHONUNBUFFERED=1
+      - DEFAULT_MODEL_NAME=logistic_regression
+      - MAX_INPUT_LENGTH=10000
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+  frontend:
+    image: nginx:alpine
+    container_name: sg-ai-frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./Ai/static:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   sg-ai-data:

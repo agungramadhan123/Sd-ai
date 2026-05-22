@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: sg-ai-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True); nltk.download('stopwords', quiet=True); nltk.download('wordnet', quiet=True); nltk.download('averaged_perceptron_tagger', quiet=True); nltk.download('averaged_perceptron_tagger_eng', quiet=True)"
+    startCommand: uvicorn Ai.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: MODEL_PATH_LOGISTIC
+        value: ../Ml/model_pipeline.pkl(logistic)
+      - key: MODEL_PATH_LINEAR_SVM
+        value: ../Ml/model_pipeline.pkl
+      - key: DEFAULT_MODEL_NAME
+        value: logistic_regression
+      - key: DATABASE_URL
+        value: sqlite:///predictions.db
+      - key: MAX_INPUT_LENGTH
+        value: "10000"
+    healthCheckPath: /health

@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SG-AI Tweet Classifier</title>
+  <meta name="description" content="Classify tweets into 6 topic categories using NLP">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface-hover: #22223a;
+      --border: #2a2a44;
+      --primary: #6c63ff;
+      --primary-light: #8b83ff;
+      --primary-glow: rgba(108, 99, 255, 0.25);
+      --accent: #00d4aa;
+      --text: #e8e8f0;
+      --text-muted: #8888a8;
+      --danger: #ff6b6b;
+      --success: #00d4aa;
+      --warning: #ffc93c;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--primary-light);
+    }
+
+    /* Input area */
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      padding: 1rem;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    .char-count {
+      text-align: right;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    .char-count.over {
+      color: var(--danger);
+    }
+
+    /* Model selector */
+    .model-selector {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .model-selector label {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .model-selector select {
+      flex: 1;
+      padding: 0.6rem 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238888a8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      padding-right: 2rem;
+    }
+
+    .model-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    /* Button */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.85rem 1.5rem;
+      margin-top: 1rem;
+      background: linear-gradient(135deg, var(--primary), #5a52e0);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px var(--primary-glow);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Result */
+    #result {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .label-badge {
+      display: inline-block;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      background: var(--primary-glow);
+      color: var(--primary-light);
+      border: 1px solid var(--primary);
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .confidence-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      margin-top: 0.5rem;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transition: width 0.6s ease;
+    }
+
+    /* Error */
+    .error-msg {
+      display: none;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 107, 107, 0.1);
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      color: var(--danger);
+      font-size: 0.9rem;
+      margin-top: 1rem;
+    }
+
+    /* WebSocket status indicator */
+    .ws-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    .ws-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    .ws-dot.connected {
+      background: var(--success);
+    }
+
+    .ws-dot.error {
+      background: var(--danger);
+    }
+
+    /* History table */
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .history-table th {
+      text-align: left;
+      padding: 0.6rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .history-table td {
+      padding: 0.6rem 0.5rem;
+      border-bottom: 1px solid rgba(42, 42, 68, 0.5);
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-table tr:hover td {
+      background: var(--surface-hover);
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 2rem;
+      font-size: 0.9rem;
+    }
+
+    /* Health dot */
+    .health-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    .health-dot.down {
+      background: var(--danger);
+      animation: none;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>SG-AI Tweet Classifier</h1>
+      <p>Klasifikasi tweet ke 6 kategori topik menggunakan NLP</p>
+      <p style="margin-top:0.5rem;font-size:0.8rem;">
+        <span id="healthDot" class="health-dot"></span>
+        <span id="healthText">Checking...</span>
+      </p>
+      <div class="ws-status">
+        <span class="ws-dot" id="wsDot"></span>
+        <span id="wsText">WebSocket: connecting...</span>
+      </div>
+    </header>
+
+    <!-- Input -->
+    <div class="card" id="input-card">
+      <h2>Masukkan Tweet</h2>
+      <textarea id="tweetInput" placeholder="Ketik atau paste tweet di sini..." maxlength="10000"></textarea>
+      <div class="char-count" id="charCount">0 / 10000</div>
+
+      <div class="model-selector">
+        <label for="modelSelect">Model:</label>
+        <select id="modelSelect">
+          <option value="logistic_regression" selected>Logistic Regression</option>
+          <option value="linear_svm">Linear SVM (SGD)</option>
+        </select>
+      </div>
+
+      <button class="btn" id="predictBtn" onclick="handlePredict()">
+        <span id="btnText">Prediksi Kategori</span>
+      </button>
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <!-- Result -->
+    <div class="card" id="result">
+      <h2>Hasil Prediksi</h2>
+      <div style="text-align:center;margin-bottom:0.75rem;">
+        <span class="label-badge" id="resultLabel">-</span>
+      </div>
+      <div class="confidence-bar">
+        <div class="confidence-fill" id="confidenceFill" style="width:0%"></div>
+      </div>
+      <div class="meta-row">
+        <span>Confidence: <strong id="resultConf">0%</strong></span>
+        <span id="resultModel">-</span>
+      </div>
+      <div class="meta-row">
+        <span id="resultTime">-</span>
+      </div>
+    </div>
+
+    <!-- Stats Dashboard -->
+    <div class="card" id="statsCard">
+      <h2>Dashboard Statistik</h2>
+      <div id="statsSummary" style="font-size:0.9rem;margin-bottom:1rem;"></div>
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+        <div style="flex:1;min-width:220px;max-width:300px;margin:0 auto;">
+          <canvas id="doughnutChart"></canvas>
+        </div>
+        <div style="flex:1.5;min-width:280px;">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+      <div id="statsContainer" style="margin-top:1rem;">
+        <div class="empty-state">Memuat statistik...</div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card">
+      <h2>Riwayat Prediksi</h2>
+      <div id="historyContainer">
+        <div class="empty-state">Belum ada prediksi</div>
+      </div>
+    </div>
+
+    <footer>SG-AI v2.0 -- Multi-Model (Logistic Regression + Linear SVM) -- 6 Topic Classes</footer>
+  </div>
+
+  <script>
+    // -----------------------------------------------------------------------
+    // Configuration
+    // -----------------------------------------------------------------------
+    const API_BASE = window.location.origin;
+    const MAX_LENGTH = 10000;
+
+    const tweetInput = document.getElementById('tweetInput');
+    const charCount = document.getElementById('charCount');
+    const predictBtn = document.getElementById('predictBtn');
+    const btnText = document.getElementById('btnText');
+    const errorMsg = document.getElementById('errorMsg');
+    const resultDiv = document.getElementById('result');
+    const modelSelect = document.getElementById('modelSelect');
+
+    // -----------------------------------------------------------------------
+    // Character counter
+    // -----------------------------------------------------------------------
+    tweetInput.addEventListener('input', function () {
+      const len = tweetInput.value.length;
+      charCount.textContent = len + ' / ' + MAX_LENGTH;
+      charCount.classList.toggle('over', len > MAX_LENGTH);
+    });
+
+    // -----------------------------------------------------------------------
+    // Health check
+    // -----------------------------------------------------------------------
+    async function checkHealth() {
+      try {
+        var res = await fetch(API_BASE + '/health');
+        var data = await res.json();
+        var dot = document.getElementById('healthDot');
+        var txt = document.getElementById('healthText');
+        if (data.status === 'ok' && data.models_loaded) {
+          var allLoaded = Object.values(data.models_loaded).some(function (v) { return v; });
+          if (allLoaded) {
+            dot.classList.remove('down');
+            var loadedNames = Object.keys(data.models_loaded).filter(function (k) {
+              return data.models_loaded[k];
+            });
+            txt.textContent = 'Models ready: ' + loadedNames.join(', ');
+          } else {
+            dot.classList.add('down');
+            txt.textContent = 'No models loaded';
+          }
+        } else {
+          dot.classList.add('down');
+          txt.textContent = 'Model not loaded';
+        }
+      } catch (e) {
+        document.getElementById('healthDot').classList.add('down');
+        document.getElementById('healthText').textContent = 'API offline';
+      }
+    }
+    checkHealth();
+
+    var wsConnection = null;
+    var wsReconnectTimer = null;
+
+    function connectWebSocket() {
+      var wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      var wsUrl = wsProtocol + '//' + window.location.host + '/ws/dashboard';
+
+      wsConnection = new WebSocket(wsUrl);
+
+      wsConnection.onopen = function () {
+        var dot = document.getElementById('wsDot');
+        var txt = document.getElementById('wsText');
+        dot.className = 'ws-dot connected';
+        txt.textContent = 'WebSocket: connected';
+      };
+
+      wsConnection.onmessage = function (event) {
+        try {
+          var data = JSON.parse(event.data);
+          if (data.type === 'init' || data.type === 'update') {
+            if (data.stats) {
+              renderStats(data.stats);
+            }
+            if (data.history) {
+              renderHistory(data.history);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to parse WebSocket message:', e);
+        }
+      };
+
+      wsConnection.onclose = function () {
+        var dot = document.getElementById('wsDot');
+        var txt = document.getElementById('wsText');
+        dot.className = 'ws-dot error';
+        txt.textContent = 'WebSocket: disconnected';
+        // Reconnect after 3 seconds
+        if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+        wsReconnectTimer = setTimeout(connectWebSocket, 3000);
+      };
+
+      wsConnection.onerror = function () {
+        var dot = document.getElementById('wsDot');
+        var txt = document.getElementById('wsText');
+        dot.className = 'ws-dot error';
+        txt.textContent = 'WebSocket: error';
+      };
+    }
+
+    connectWebSocket();
+
+    // -----------------------------------------------------------------------
+    // Prediction
+    // -----------------------------------------------------------------------
+    async function handlePredict() {
+      var tweet = tweetInput.value.trim();
+      if (!tweet) {
+        showError('Masukkan teks tweet terlebih dahulu.');
+        return;
+      }
+      if (/^\d+$/.test(tweet)) {
+        showError('Input tidak boleh hanya berisi angka. Masukkan teks tweet yang valid.');
+        return;
+      }
+      hideError();
+      setLoading(true);
+      resultDiv.style.display = 'none';
+
+      var selectedModel = modelSelect.value;
+
+      try {
+        var res = await fetch(API_BASE + '/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tweet: tweet, model_name: selectedModel }),
+        });
+        if (!res.ok) {
+          var err = await res.json();
+          throw new Error(err.detail || 'HTTP ' + res.status);
+        }
+        var data = await res.json();
+        showResult(data);
+      } catch (e) {
+        showError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function showResult(data) {
+      document.getElementById('resultLabel').textContent = data.label;
+      var pct = Math.round(data.confidence_score * 100);
+      document.getElementById('resultConf').textContent = pct + '%';
+      document.getElementById('confidenceFill').style.width = pct + '%';
+      document.getElementById('resultModel').textContent = 'Model: ' + data.model_name;
+      document.getElementById('resultTime').textContent = new Date(data.timestamp).toLocaleString();
+      resultDiv.style.display = 'block';
+    }
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.style.display = 'block';
+    }
+
+    function hideError() {
+      errorMsg.style.display = 'none';
+    }
+
+    function setLoading(on) {
+      predictBtn.disabled = on;
+      if (on) {
+        btnText.innerHTML = '<div class="spinner"></div> Memproses...';
+      } else {
+        btnText.textContent = 'Prediksi Kategori';
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Render functions for stats and history (used by both REST and WebSocket)
+    // -----------------------------------------------------------------------
+    var doughnutChart = null;
+    var barChart = null;
+
+    var chartColors = [
+      '#6c63ff', '#00d4aa', '#ffc93c', '#ff6b6b',
+      '#36a2eb', '#ff9f40', '#c084fc', '#4ade80'
+    ];
+
+    function renderStats(data) {
+      var container = document.getElementById('statsContainer');
+      var summary = document.getElementById('statsSummary');
+
+      if (!data || data.total === 0) {
+        container.innerHTML = '<div class="empty-state">Belum ada data statistik</div>';
+        summary.innerHTML = '';
+        destroyCharts();
+        return;
+      }
+
+      var labels = Object.keys(data.label_distribution);
+      var counts = Object.values(data.label_distribution);
+
+      summary.innerHTML = 'Total prediksi: <strong>' + data.total + '</strong>';
+
+      // Doughnut chart
+      var doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
+      if (doughnutChart) {
+        doughnutChart.data.labels = labels;
+        doughnutChart.data.datasets[0].data = counts;
+        doughnutChart.data.datasets[0].backgroundColor = chartColors.slice(0, labels.length);
+        doughnutChart.update();
+      } else {
+        doughnutChart = new Chart(doughnutCtx, {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: counts,
+              backgroundColor: chartColors.slice(0, labels.length),
+              borderColor: '#1a1a2e',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '60%',
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  color: '#e8e8f0',
+                  font: { family: 'Inter', size: 11 },
+                  padding: 12,
+                  usePointStyle: true,
+                  pointStyleWidth: 8
+                }
+              },
+              title: {
+                display: true,
+                text: 'Distribusi Label',
+                color: '#8b83ff',
+                font: { family: 'Inter', size: 13, weight: 600 }
+              }
+            }
+          }
+        });
+      }
+
+      // Bar chart
+      var barCtx = document.getElementById('barChart').getContext('2d');
+      if (barChart) {
+        barChart.data.labels = labels;
+        barChart.data.datasets[0].data = counts;
+        barChart.data.datasets[0].backgroundColor = chartColors.slice(0, labels.length);
+        barChart.update();
+      } else {
+        barChart = new Chart(barCtx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Jumlah Prediksi',
+              data: counts,
+              backgroundColor: chartColors.slice(0, labels.length),
+              borderColor: chartColors.slice(0, labels.length),
+              borderWidth: 1,
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'y',
+            plugins: {
+              legend: { display: false },
+              title: {
+                display: true,
+                text: 'Jumlah per Kategori',
+                color: '#8b83ff',
+                font: { family: 'Inter', size: 13, weight: 600 }
+              }
+            },
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: { color: '#8888a8', font: { family: 'Inter', size: 11 } },
+                grid: { color: 'rgba(42,42,68,0.5)' }
+              },
+              y: {
+                ticks: { color: '#e8e8f0', font: { family: 'Inter', size: 11 } },
+                grid: { display: false }
+              }
+            }
+          }
+        });
+      }
+
+      // Detail text below charts
+      var html = '<div style="display:flex;flex-direction:column;gap:0.4rem;">';
+      for (var i = 0; i < labels.length; i++) {
+        var pct = Math.round((counts[i] / data.total) * 100);
+        html += '<div style="display:flex;justify-content:space-between;font-size:0.8rem;">';
+        html += '<span style="display:flex;align-items:center;gap:0.4rem;">';
+        html += '<span style="width:10px;height:10px;border-radius:2px;background:' + chartColors[i] + ';"></span>';
+        html += labels[i];
+        html += '</span>';
+        html += '<span style="color:var(--text-muted)">' + counts[i] + ' (' + pct + '%)</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function destroyCharts() {
+      if (doughnutChart) { doughnutChart.destroy(); doughnutChart = null; }
+      if (barChart) { barChart.destroy(); barChart = null; }
+    }
+
+    function renderHistory(data) {
+      var container = document.getElementById('historyContainer');
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div class="empty-state">Belum ada prediksi</div>';
+        return;
+      }
+      var html = '<table class="history-table"><thead><tr>';
+      html += '<th>Tweet</th><th>Label</th><th>Conf</th><th>Waktu</th>';
+      html += '</tr></thead><tbody>';
+      for (var i = 0; i < data.length; i++) {
+        var item = data[i];
+        var conf = Math.round(item.confidence * 100);
+        var time = item.created_at ? new Date(item.created_at).toLocaleString() : '-';
+        html += '<tr>';
+        html += '<td title="' + escapeAttr(item.tweet_text) + '">' + escapeHtml(item.tweet_text) + '</td>';
+        html += '<td><span class="label-badge" style="font-size:0.75rem;padding:0.2rem 0.6rem">' + escapeHtml(item.label) + '</span></td>';
+        html += '<td>' + conf + '%</td>';
+        html += '<td>' + time + '</td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    // -----------------------------------------------------------------------
+    // REST fallback: load stats and history on page load
+    // -----------------------------------------------------------------------
+    async function loadHistory() {
+      try {
+        var res = await fetch(API_BASE + '/history?limit=10');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var data = await res.json();
+        renderHistory(data);
+      } catch (e) {
+        console.error('Failed to load history:', e);
+        document.getElementById('historyContainer').innerHTML =
+          '<div class="empty-state">Gagal memuat riwayat</div>';
+      }
+    }
+    loadHistory();
+
+    async function loadStats() {
+      try {
+        var res = await fetch(API_BASE + '/stats');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var data = await res.json();
+        renderStats(data);
+      } catch (e) {
+        console.error('Failed to load stats:', e);
+        document.getElementById('statsContainer').innerHTML =
+          '<div class="empty-state">Gagal memuat statistik</div>';
+      }
+    }
+    loadStats();
+
+    // -----------------------------------------------------------------------
+    // Utilities
+    // -----------------------------------------------------------------------
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function escapeAttr(str) {
+      return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Enter key shortcut
+    tweetInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handlePredict();
+      }
+    });
+  </script>
+</body>
+
+</html>

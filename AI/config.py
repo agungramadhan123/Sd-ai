@@ -13,23 +13,19 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-
-# Load .env from the AI/ directory (next to this file)
 _ENV_PATH: Path = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=_ENV_PATH)
-
-# ---------------------------------------------------------------------------
-# Resolved base directories
-# ---------------------------------------------------------------------------
-BASE_DIR: Path = Path(__file__).resolve().parent          # AI/
-ML_DIR: Path = BASE_DIR.parent / "Ml"                    # Ml/
+BASE_DIR: Path = Path(__file__).resolve().parent          
+ML_DIR: Path = BASE_DIR.parent / "Ml"                    
 
 
 class _Settings:
     """Application settings resolved from environment variables.
 
     Attributes:
-        MODEL_PATH: Absolute path to the trained ``.pkl`` model file.
+        MODEL_REGISTRY: Mapping of model name to absolute path of .pkl file.
+        DEFAULT_MODEL_NAME: Model name used when client does not specify one.
+        MODEL_PATH: Legacy single-model path (kept for backward compat).
         DATABASE_URL: SQLAlchemy database URL string.
         MAX_INPUT_LENGTH: Maximum allowed characters for tweet input.
         HOST: Server bind host.
@@ -37,8 +33,36 @@ class _Settings:
     """
 
     def __init__(self) -> None:
-        # Model path — resolve relative paths against AI/ directory
-        _raw_model: str = os.getenv("MODEL_PATH", "../Ml/model_pipeline_LOGISTIK.pkl")
+        # ------------------------------------------------------------------
+        # Multi-model registry
+        # ------------------------------------------------------------------
+        # Each entry maps a logical model name to its .pkl file path.
+        # Relative paths are resolved against AI/ directory.
+        self.MODEL_REGISTRY: dict[str, Path] = {}
+
+        _registry_raw: dict[str, str] = {
+            "logistic_regression": os.getenv(
+                "MODEL_PATH_LOGISTIC",
+                "../Ml/model_pipeline.pkl(logistic)",
+            ),
+            "linear_svm": os.getenv(
+                "MODEL_PATH_LINEAR_SVM",
+                "../Ml/model_pipeline.pkl",
+            ),
+        }
+
+        for name, raw_path in _registry_raw.items():
+            p = Path(raw_path)
+            if not p.is_absolute():
+                p = (BASE_DIR / p).resolve()
+            self.MODEL_REGISTRY[name] = p
+
+        self.DEFAULT_MODEL_NAME: str = os.getenv(
+            "DEFAULT_MODEL_NAME", "logistic_regression"
+        )
+
+        # Legacy single model path (backward compatibility)
+        _raw_model: str = os.getenv("MODEL_PATH", "../Ml/model_pipeline.pkl(logistic)")
         _model_path = Path(_raw_model)
         if not _model_path.is_absolute():
             _model_path = (BASE_DIR / _model_path).resolve()
@@ -53,7 +77,7 @@ class _Settings:
         self.DATABASE_URL: str = _raw_db
 
         # Input validation
-        self.MAX_INPUT_LENGTH: int = int(os.getenv("MAX_INPUT_LENGTH", "1000"))
+        self.MAX_INPUT_LENGTH: int = int(os.getenv("MAX_INPUT_LENGTH", "10000"))
 
         # Server
         self.HOST: str = os.getenv("HOST", "0.0.0.0")
