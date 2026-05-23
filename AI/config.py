@@ -20,24 +20,7 @@ ML_DIR: Path = BASE_DIR.parent / "Ml"
 
 
 class _Settings:
-    """Application settings resolved from environment variables.
-
-    Attributes:
-        MODEL_REGISTRY: Mapping of model name to absolute path of .pkl file.
-        DEFAULT_MODEL_NAME: Model name used when client does not specify one.
-        MODEL_PATH: Legacy single-model path (kept for backward compat).
-        DATABASE_URL: SQLAlchemy database URL string.
-        MAX_INPUT_LENGTH: Maximum allowed characters for tweet input.
-        HOST: Server bind host.
-        PORT: Server bind port.
-    """
-
     def __init__(self) -> None:
-        # ------------------------------------------------------------------
-        # Multi-model registry
-        # ------------------------------------------------------------------
-        # Each entry maps a logical model name to its .pkl file path.
-        # Relative paths are resolved against AI/ directory.
         self.MODEL_REGISTRY: dict[str, Path] = {}
 
         _registry_raw: dict[str, str] = {
